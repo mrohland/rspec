@@ -29,7 +29,7 @@ module Spec
       
       def matches?(actual)
         @actual = actual
-        instance_exec(@actual, &@match_block)
+        instance_exec(@actual,    &@match_block)
       end
       
       def description(&block)
@@ -59,21 +59,13 @@ module Spec
     private
 
       def method_missing(m, *a, &b)
-        if declared? m
-          __send__(m, *a, &b)
-        else
-          super
-        end
+        @declared_methods.include?(m.to_s) ? send(m, *a, &b) : super
       end
 
       def documenting_declared_methods # :nodoc:
         orig_private_methods = private_methods
         yield
         @declared_methods = private_methods - orig_private_methods
-      end
-
-      def declared?(m)
-        @declared_methods.grep(/#{m}/)
       end
 
       def cache_or_call_cached(key, actual=nil, &block)
