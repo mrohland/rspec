@@ -14,15 +14,7 @@ module Spec
           :failure_message_for_should => lambda {|actual| "expected #{actual.inspect} to #{name_to_sentence}#{expected_to_sentence}"},
           :failure_message_for_should_not => lambda {|actual| "expected #{actual.inspect} not to #{name_to_sentence}#{expected_to_sentence}"}
         }
-        # NOTE - for reasons I don't yet understand, documenting methods declared
-        # while evaluating the &declarations block and then treating them as public
-        # via method_missing, is necessary in practical use, as demonstrated in
-        # in define_matcher_with_fluent_interface.feature, but it is not necessary
-        # within the matcher_spec. In other words, if this is removed, all of the
-        # matcher specs will still pass, but the feature will fail and the behaviour
-        # won't actually work. And then some users will be unhappy. So don't change
-        # it.
-        documenting_declared_methods do
+        making_declared_methods_public do
           instance_exec(*@expected, &declarations)
         end
       end
@@ -58,14 +50,21 @@ module Spec
             
     private
 
-      def method_missing(m, *a, &b)
-        @declared_methods.include?(m.to_s) ? send(m, *a, &b) : super
-      end
-
-      def documenting_declared_methods # :nodoc:
+      def making_declared_methods_public # :nodoc:
+        # Our home-grown instance_exec in ruby 1.8.6 results in any methods
+        # declared in the block eval'd by instance_exec in the block to which we
+        # are yielding here are scoped private. This is NOT the case for Ruby
+        # 1.8.7 or 1.9.
+        # 
+        # Also, due some crazy scoping that I don't understand, these methods
+        # are actually available in the specs (something about the matcher being
+        # defined in the scope of Spec::Matchers or within an example), so not
+        # doing the following will not cause specs to fail, but they *will*
+        # cause features to fail and that will make users unhappy. So don't.
         orig_private_methods = private_methods
         yield
-        @declared_methods = private_methods - orig_private_methods
+        st = (class << self; self; end)
+        (private_methods - orig_private_methods).each {|m| st.__send__ :public, m}
       end
 
       def cache_or_call_cached(key, actual=nil, &block)
