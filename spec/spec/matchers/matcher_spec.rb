@@ -181,20 +181,28 @@ module Spec
         end
       end
       
-      context "with helper methods" do
-        it "does something" do
-          matcher = Spec::Matchers::Matcher.new(:be_similar_to, [1,2,3]) do |sample|
-            match do |actual|
-              similar?(sample, actual)
-            end
-
-            def similar?(a, b)
-              a.sort == b.sort
-            end
+      it "supports helper methods" do
+        matcher = Spec::Matchers::Matcher.new(:be_similar_to, [1,2,3]) do |sample|
+          match do |actual|
+            similar?(sample, actual)
           end
-          
-          matcher.matches?([2,3,1]).should be_true
+
+          def similar?(a, b)
+            a.sort == b.sort
+          end
         end
+        
+        matcher.matches?([2,3,1]).should be_true
+      end
+      
+      it "supports fluent interface" do
+        matcher = Spec::Matchers::Matcher.new(:first_word) do
+          def second_word
+            self
+          end
+        end
+        
+        matcher.second_word.should == matcher
       end
 
     end
